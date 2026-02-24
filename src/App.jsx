@@ -54,6 +54,22 @@ function AppContent() {
     const [activeTab, setActiveTab] = useState('home');
     const [loading, setLoading] = useState(true);
     const [showSplash, setShowSplash] = useState(true);
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
+    const [showInstallBanner, setShowInstallBanner] = useState(false);
+
+    // Capture PWA install prompt
+    useEffect(() => {
+        const handler = (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+            // Show banner if not dismissed before
+            if (!localStorage.getItem('vybe_install_dismissed')) {
+                setShowInstallBanner(true);
+            }
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, []);
 
     useEffect(() => {
         const savedUser = getUser();
@@ -159,8 +175,55 @@ function AppContent() {
         }
     };
 
+    const handleInstallClick = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            setShowInstallBanner(false);
+        }
+        setDeferredPrompt(null);
+    };
+
+    const dismissInstallBanner = () => {
+        setShowInstallBanner(false);
+        localStorage.setItem('vybe_install_dismissed', 'true');
+    };
+
     return (
         <div className="app-container">
+            {/* PWA Install Banner */}
+            {showInstallBanner && (
+                <div className="install-banner">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
+                        <div style={{
+                            width: 36, height: 36, borderRadius: 10,
+                            background: 'var(--gradient-primary)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                        }}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Install VYBE</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Add to home screen for the best experience</div>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={handleInstallClick} style={{
+                            background: 'var(--accent-blue)', color: 'white', border: 'none',
+                            borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 600,
+                            cursor: 'pointer',
+                        }}>Install</button>
+                        <button onClick={dismissInstallBanner} style={{
+                            background: 'none', border: 'none', color: 'var(--text-muted)',
+                            fontSize: 18, cursor: 'pointer', padding: '0 4px',
+                        }}>×</button>
+                    </div>
+                </div>
+            )}
+
             <div className="page-content" key={activeTab}>
                 {renderPage()}
             </div>
