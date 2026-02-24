@@ -1,0 +1,31 @@
+{
+  "name": "vitatrack-pro",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "canvas-confetti": "^1.9.4",
+    "chart.js": "^4.5.1",
+    "firebase": "^12.9.0",
+    "jspdf": "^4.2.0",
+    "jspdf-autotable": "^5.0.7",
+    "lucide-react": "^0.575.0",
+    "react": "^19.2.4",
+    "react-chartjs-2": "^5.3.1",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.13.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.1.4",
+    "vite": "^7.3.1"
+  }
+}
