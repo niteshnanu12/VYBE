@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Footprints, Bike, Dumbbell, Timer, Flame, MapPin, Plus, ChevronDown, Play, Pause, RotateCcw } from 'lucide-react';
-import { getTodayActivities, addActivity, getTodaySteps } from '../utils/storage.js';
+import { getTodayActivities, addActivity, getTodaySteps, saveTodaySteps } from '../utils/storage.js';
 import { formatDuration } from '../utils/algorithms.js';
+import { requestSensorPermissions, startTracking, isSensorTracking, stopTracking } from '../utils/sensors.js';
 
 const activityTypes = [
     { type: 'walking', icon: Footprints, label: 'Walking', color: '#4f8cff', met: 3.5 },
@@ -23,10 +24,27 @@ export default function Activity() {
     const [timerSeconds, setTimerSeconds] = useState(0);
     const [timerType, setTimerType] = useState('walking');
 
+    const [trackingActive, setTrackingActive] = useState(false);
+    const [sensorError, setSensorError] = useState(null);
+
     useEffect(() => {
         setActivities(getTodayActivities());
         setSteps(getTodaySteps());
+        setTrackingActive(isSensorTracking());
     }, []);
+
+    const handleEnableSensors = async () => {
+        const result = await requestSensorPermissions();
+        if (result.granted) {
+            setTrackingActive(true);
+            setSensorError(null);
+            startTracking((updatedSteps) => {
+                setSteps(updatedSteps);
+            });
+        } else {
+            setSensorError(result.error || 'Permission denied');
+        }
+    };
 
     useEffect(() => {
         let interval;
@@ -104,7 +122,7 @@ export default function Activity() {
                     <div className="metric-icon" style={{ background: 'rgba(255, 145, 0, 0.12)' }}>
                         <Flame size={18} style={{ color: '#ff9100' }} />
                     </div>
-                    <div className="metric-value" style={{ color: '#ff9100' }}>{totalCalories + (steps?.calories || 0)}</div>
+                    <div className="metric-value" style={{ color: '#ff9100' }}>{Math.round(totalCalories + (steps?.calories || 0))}</div>
                     <div className="metric-label">Total Cal</div>
                 </div>
                 <div className="metric-item">
@@ -122,6 +140,58 @@ export default function Activity() {
                     <div className="metric-label">KM</div>
                 </div>
             </div>
+
+            {/* Sensor Permission Section */}
+            {!trackingActive && (
+                <div className="card" style={{
+                    border: sensorError ? '1px solid rgba(255, 71, 87, 0.3)' : '1px solid rgba(79, 140, 255, 0.3)',
+                    background: sensorError ? 'rgba(255, 71, 87, 0.05)' : 'rgba(79, 140, 255, 0.05)',
+                    marginBottom: 24
+                }}>
+                    <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                        <div style={{
+                            width: 48, height: 48, borderRadius: 12,
+                            background: sensorError ? 'rgba(255, 71, 87, 0.1)' : 'rgba(79, 140, 255, 0.1)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                            <Footprints size={24} style={{ color: sensorError ? '#ff4757' : '#4f8cff' }} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600, fontSize: 14 }}>Real-time Step Tracking</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                {sensorError ? sensorError : 'Enable sensors to track your movement automatically.'}
+                            </div>
+                        </div>
+                        <button
+                            className="btn btn-primary"
+                            style={{ width: 'auto', padding: '8px 16px', fontSize: 13 }}
+                            onClick={handleEnableSensors}
+                        >
+                            Enable
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {trackingActive && (
+                <div className="card" style={{ border: '1px solid rgba(0, 230, 118, 0.3)', background: 'rgba(0, 230, 118, 0.05)', marginBottom: 24 }}>
+                    <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                        <div style={{
+                            width: 48, height: 48, borderRadius: 12,
+                            background: 'rgba(0, 230, 118, 0.1)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                            <div className="live-dot" style={{ margin: 0 }} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600, fontSize: 14 }}>Tracking is Active</div>
+                            <div style={{ fontSize: 40, fontWeight: 800, fontFamily: 'var(--font-display)', margin: '4px 0', letterSpacing: -1 }}>
+                                {steps?.count || 0} <span style={{ fontSize: 16, fontWeight: 500, color: 'var(--text-secondary)', letterSpacing: 0 }}>steps</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Live Workout Timer */}
             <div className="card" id="card-workout-timer" style={{ textAlign: 'center' }}>

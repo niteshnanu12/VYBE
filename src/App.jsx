@@ -53,7 +53,10 @@ function AppContent() {
     const [onboarded, setOnboardedState] = useState(false);
     const [activeTab, setActiveTab] = useState('home');
     const [loading, setLoading] = useState(true);
-    const [showSplash, setShowSplash] = useState(true);
+    const [showSplash, setShowSplash] = useState(() => {
+        // Only show splash if it hasn't been shown in this session
+        return !sessionStorage.getItem('vybe_splash_shown');
+    });
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [showInstallBanner, setShowInstallBanner] = useState(false);
 
@@ -90,6 +93,7 @@ function AppContent() {
 
     const handleSplashFinish = useCallback(() => {
         setShowSplash(false);
+        sessionStorage.setItem('vybe_splash_shown', 'true');
     }, []);
 
     const handleLogin = useCallback((userData) => {
