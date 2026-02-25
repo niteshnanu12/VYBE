@@ -102,6 +102,7 @@ body {
   /* Disable pull-to-refresh on mobile browsers */
   overscroll-behavior-y: contain;
   overscroll-behavior: none;
+  transition: background-color 0.35s ease, color 0.35s ease;
 }
 
 #root {
@@ -154,6 +155,7 @@ img {
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--bg-primary);
+  transition: background-color 0.35s ease;
 }
 
 .page-content {
@@ -251,51 +253,58 @@ img {
   right: 0;
   height: calc(var(--nav-height) + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
-  background: rgba(10, 10, 15, 0.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--nav-bg, rgba(10, 10, 15, 0.92));
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-top: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: space-around;
   z-index: 100;
+  max-width: 480px;
+  margin: 0 auto;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 8px 12px;
+  gap: 3px;
+  padding: 8px 14px;
   border-radius: var(--radius-md);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   -webkit-tap-highlight-color: transparent;
+  background: transparent;
+  border: none;
+  cursor: pointer;
 }
 
 .nav-item svg {
   width: 22px;
   height: 22px;
   stroke-width: 1.8;
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
   color: var(--text-muted);
 }
 
 .nav-item span {
   font-size: 10px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-muted);
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
   letter-spacing: 0.3px;
 }
 
 .nav-item.active svg {
   color: var(--accent-blue);
-  filter: drop-shadow(0 0 8px rgba(79, 140, 255, 0.4));
+  filter: drop-shadow(0 0 8px rgba(79, 140, 255, 0.35));
 }
 
 .nav-item.active span {
   color: var(--accent-blue);
+  font-weight: 700;
 }
 
 .nav-item.active::before {
@@ -304,14 +313,15 @@ img {
   top: -1px;
   left: 50%;
   transform: translateX(-50%);
-  width: 20px;
-  height: 2px;
-  background: var(--accent-blue);
-  border-radius: 0 0 4px 4px;
+  width: 24px;
+  height: 3px;
+  background: var(--gradient-primary);
+  border-radius: 0 0 6px 6px;
+  box-shadow: 0 2px 8px rgba(79, 140, 255, 0.3);
 }
 
 .nav-item:active {
-  transform: scale(0.92);
+  transform: scale(0.9);
 }
 
 /* ===== Header ===== */
@@ -2104,9 +2114,9 @@ body[data-theme="light"] #card-growth-detail div[style*="background"] {
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px;
-  background: rgba(20, 20, 30, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--nav-bg, rgba(10, 10, 15, 0.92));
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-bottom: 1px solid var(--border-subtle);
   position: sticky;
   top: 0;
@@ -2114,6 +2124,20 @@ body[data-theme="light"] #card-growth-detail div[style*="background"] {
   max-width: 480px;
   margin: 0 auto;
   width: 100%;
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.date-navigator::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 2px;
+  background: var(--gradient-primary);
+  border-radius: 2px;
+  opacity: 0.4;
 }
 
 .date-nav-btn {
@@ -2130,14 +2154,21 @@ body[data-theme="light"] #card-growth-detail div[style*="background"] {
   cursor: pointer;
 }
 
+.date-nav-btn:hover:not(:disabled) {
+  background: var(--bg-card-hover);
+  border-color: var(--border-light);
+  color: var(--text-primary);
+}
+
 .date-nav-btn:active:not(:disabled) {
   transform: scale(0.9);
-  background: var(--bg-card-hover);
+  background: var(--bg-elevated);
 }
 
 .date-nav-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+  pointer-events: none;
 }
 
 .date-nav-label {
@@ -2152,12 +2183,14 @@ body[data-theme="light"] #card-growth-detail div[style*="background"] {
   font-size: 16px;
   font-weight: 700;
   color: var(--text-primary);
+  transition: color 0.3s ease;
 }
 
 .date-nav-date {
   font-size: 11px;
   color: var(--text-muted);
   letter-spacing: 0.5px;
+  transition: color 0.3s ease;
 }
 
 /* ===== Live Tracking Indicator ===== */
