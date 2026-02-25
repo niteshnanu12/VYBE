@@ -70,9 +70,10 @@ const LEADERBOARD = [
 ];
 
 const CHALLENGES = [
-    { id: 1, title: '10K Steps Challenge', desc: 'Hit 10,000 steps for 7 consecutive days', participants: 234, daysLeft: 5, progress: 57, icon: '🏃' },
-    { id: 2, title: 'Hydration Hero', desc: 'Drink 8 glasses daily for 2 weeks', participants: 189, daysLeft: 10, progress: 35, icon: '💧' },
-    { id: 3, title: 'Sleep Champion', desc: '8+ hours of sleep for 5 nights', participants: 156, daysLeft: 3, progress: 80, icon: '😴' },
+    { id: 1, title: '10K Steps Challenge', desc: 'Hit 10,000 steps for 7 consecutive days', participants: 234, daysLeft: 5, totalDays: 7, goal: 70000, icon: '🏃', reward: '🏅 Gold Badge' },
+    { id: 2, title: 'Hydration Hero', desc: 'Drink 8 glasses daily for 2 weeks', participants: 189, daysLeft: 10, totalDays: 14, goal: 112, icon: '💧', reward: '💎 Diamond Badge' },
+    { id: 3, title: 'Sleep Champion', desc: '8+ hours of sleep for 5 nights', participants: 156, daysLeft: 3, totalDays: 5, goal: 40, icon: '😴', reward: '⭐ Star Badge' },
+    { id: 4, title: 'Calorie Master', desc: 'Stay within calorie goal for 7 days', participants: 98, daysLeft: 7, totalDays: 7, goal: 7, icon: '🔥', reward: '🎖️ Elite Badge' },
 ];
 
 export default function Community() {
@@ -84,6 +85,11 @@ export default function Community() {
     const [likedPosts, setLikedPosts] = useState({});
     const [showComments, setShowComments] = useState(null);
     const [commentText, setCommentText] = useState('');
+    const [joinedChallenges, setJoinedChallenges] = useState(() => {
+        const saved = localStorage.getItem('vt_joined_challenges');
+        return saved ? JSON.parse(saved) : {};
+    });
+    const [challengeToast, setChallengeToast] = useState(null);
     const user = getUser();
 
     useEffect(() => {
@@ -155,6 +161,43 @@ export default function Community() {
         const hrs = Math.floor(mins / 60);
         if (hrs < 24) return `${hrs}h ago`;
         return `${Math.floor(hrs / 24)}d ago`;
+    };
+
+    // ===== Challenge Participation =====
+    const handleJoinChallenge = (challengeId) => {
+        const challenge = CHALLENGES.find(c => c.id === challengeId);
+        if (!challenge) return;
+
+        const updated = {
+            ...joinedChallenges,
+            [challengeId]: {
+                joinedAt: Date.now(),
+                progress: 0,
+                rank: Math.floor(Math.random() * (challenge.participants - 10)) + 10,
+                totalParticipants: challenge.participants + 1,
+                status: 'active',
+            },
+        };
+        setJoinedChallenges(updated);
+        localStorage.setItem('vt_joined_challenges', JSON.stringify(updated));
+
+        setChallengeToast(`Joined "${challenge.title}"! 🎉`);
+        setTimeout(() => setChallengeToast(null), 3000);
+    };
+
+    const handleLeaveChallenge = (challengeId) => {
+        const updated = { ...joinedChallenges };
+        delete updated[challengeId];
+        setJoinedChallenges(updated);
+        localStorage.setItem('vt_joined_challenges', JSON.stringify(updated));
+    };
+
+    const getChallengeProgress = (challenge) => {
+        const joined = joinedChallenges[challenge.id];
+        if (!joined) return 0;
+        const daysSinceJoin = Math.max(1, Math.floor((Date.now() - joined.joinedAt) / 86400000));
+        const maxDays = challenge.totalDays;
+        return Math.min(Math.round((daysSinceJoin / maxDays) * 100), 100);
     };
 
     return (
@@ -333,31 +376,126 @@ export default function Community() {
 
             {tab === 'challenges' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {CHALLENGES.map(challenge => (
-                        <div key={challenge.id} className="card" style={{ marginBottom: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
-                                <div style={{ fontSize: 28 }}>{challenge.icon}</div>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: 15, fontWeight: 600 }}>{challenge.title}</div>
-                                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{challenge.desc}</div>
-                                </div>
-                            </div>
-                            <div className="progress-bar-container" style={{ height: 8, marginBottom: 8 }}>
-                                <div className="progress-bar-fill" style={{ width: `${challenge.progress}%`, background: 'var(--gradient-primary)' }} />
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                                    <Users size={12} style={{ display: 'inline', verticalAlign: -2 }} /> {challenge.participants} participants
-                                </span>
-                                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                                    {challenge.daysLeft}d left • {challenge.progress}%
-                                </span>
-                            </div>
-                            <button className="btn btn-primary btn-sm" style={{ marginTop: 12 }}>
-                                {challenge.progress > 0 ? 'Continue' : 'Join Challenge'}
-                            </button>
+                    {/* Challenge Toast */}
+                    {challengeToast && (
+                        <div style={{
+                            padding: '12px 16px', borderRadius: 12,
+                            background: 'rgba(0, 230, 118, 0.12)', border: '1px solid rgba(0, 230, 118, 0.3)',
+                            color: '#00e676', fontSize: 14, fontWeight: 600, textAlign: 'center',
+                            animation: 'fadeIn 0.3s ease',
+                        }}>
+                            {challengeToast}
                         </div>
-                    ))}
+                    )}
+
+                    {CHALLENGES.map(challenge => {
+                        const isJoined = !!joinedChallenges[challenge.id];
+                        const progress = isJoined ? getChallengeProgress(challenge) : 0;
+                        const joinData = joinedChallenges[challenge.id];
+                        const isCompleted = progress >= 100;
+
+                        return (
+                            <div key={challenge.id} className="card" style={{
+                                marginBottom: 0,
+                                border: isJoined ? '1px solid rgba(79, 140, 255, 0.3)' : undefined,
+                                background: isJoined ? 'rgba(79, 140, 255, 0.03)' : undefined,
+                            }} id={`challenge-${challenge.id}`}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+                                    <div style={{ fontSize: 28 }}>{challenge.icon}</div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <div style={{ fontSize: 15, fontWeight: 600 }}>{challenge.title}</div>
+                                            {isJoined && (
+                                                <span className="stat-badge" style={{
+                                                    background: isCompleted ? 'rgba(0,230,118,0.12)' : 'rgba(79,140,255,0.12)',
+                                                    color: isCompleted ? '#00e676' : '#4f8cff',
+                                                    fontSize: 10,
+                                                }}>
+                                                    {isCompleted ? '✅ Complete' : '🔵 Joined'}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{challenge.desc}</div>
+                                    </div>
+                                </div>
+
+                                <div className="progress-bar-container" style={{ height: 8, marginBottom: 8 }}>
+                                    <div className="progress-bar-fill" style={{
+                                        width: `${progress}%`,
+                                        background: isCompleted ? 'var(--gradient-green)' : 'var(--gradient-primary)',
+                                        transition: 'width 0.8s ease',
+                                    }} />
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                        <Users size={12} style={{ display: 'inline', verticalAlign: -2 }} />
+                                        {' '}{isJoined ? (challenge.participants + 1) : challenge.participants} participants
+                                    </span>
+                                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                        {challenge.daysLeft}d left • {progress}%
+                                    </span>
+                                </div>
+
+                                {/* Ranking & Reward for joined challenges */}
+                                {isJoined && joinData && (
+                                    <div style={{
+                                        display: 'flex', gap: 8, marginBottom: 12,
+                                        padding: '10px 12px', borderRadius: 10,
+                                        background: 'var(--bg-elevated)',
+                                    }}>
+                                        <div style={{ flex: 1, textAlign: 'center' }}>
+                                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Your Rank</div>
+                                            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--accent-blue)' }}>#{joinData.rank}</div>
+                                        </div>
+                                        <div style={{ width: 1, background: 'var(--border-subtle)' }} />
+                                        <div style={{ flex: 1, textAlign: 'center' }}>
+                                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Progress</div>
+                                            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-display)', color: '#00e676' }}>{progress}%</div>
+                                        </div>
+                                        <div style={{ width: 1, background: 'var(--border-subtle)' }} />
+                                        <div style={{ flex: 1, textAlign: 'center' }}>
+                                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Reward</div>
+                                            <div style={{ fontSize: 14, fontWeight: 600 }}>{challenge.reward}</div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {isJoined ? (
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        {isCompleted ? (
+                                            <button className="btn btn-primary btn-sm" style={{ flex: 1, background: 'var(--gradient-green)' }} disabled>
+                                                🏆 Challenge Complete!
+                                            </button>
+                                        ) : (
+                                            <>
+                                                <button className="btn btn-primary btn-sm" style={{ flex: 1 }} id={`btn-view-challenge-${challenge.id}`}>
+                                                    📊 Track Progress
+                                                </button>
+                                                <button
+                                                    className="btn btn-secondary btn-sm"
+                                                    style={{ width: 'auto', padding: '8px 16px' }}
+                                                    onClick={() => handleLeaveChallenge(challenge.id)}
+                                                    id={`btn-leave-challenge-${challenge.id}`}
+                                                >
+                                                    Leave
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <button
+                                        className="btn btn-primary btn-sm"
+                                        style={{ marginTop: 4 }}
+                                        onClick={() => handleJoinChallenge(challenge.id)}
+                                        id={`btn-join-challenge-${challenge.id}`}
+                                    >
+                                        🎯 Join Challenge
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 

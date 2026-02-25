@@ -1,12 +1,15 @@
 // ===== VYBE - Mobile Sensor Manager =====
+// Handles step tracking with proper distance calculation and background persistence
 
-import { getTodaySteps, saveTodaySteps } from './storage.js';
+import { getTodaySteps, saveTodaySteps, getSettings } from './storage.js';
+import { calculateDistance, calculateCaloriesFromSteps } from './algorithms.js';
 
 let isTracking = false;
 let stepThreshold = 1.2; // G-force threshold for a step
 let lastAccelerationMagnitude = 0;
 let stepCount = 0;
 let lastStepTime = 0;
+let motionHandler = null;
 const MIN_STEP_INTERVAL = 300; // ms
 
 export async function requestSensorPermissions() {
@@ -38,26 +41,32 @@ export function startTracking(onStep) {
 
     const initialSteps = getTodaySteps();
     stepCount = initialSteps.count;
+    const settings = getSettings();
 
-    window.addEventListener('devicemotion', (event) => {
+    // Create the motion handler so we can properly remove it later
+    motionHandler = (event) => {
         const acc = event.accelerationIncludingGravity;
         if (!acc) return;
 
         // Calculate magnitude of acceleration vector
         const magnitude = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z) / 9.81;
 
-        // Very basic step detection (peak detection above threshold)
+        // Step detection via peak detection above threshold
         if (magnitude > stepThreshold && lastAccelerationMagnitude <= stepThreshold) {
             const now = Date.now();
             if (now - lastStepTime > MIN_STEP_INTERVAL) {
                 stepCount++;
                 lastStepTime = now;
 
+                // Use algorithms for proper calculation based on user height/weight
+                const userWeight = settings.weight || 70;
+                const userHeight = settings.height || 170;
+
                 const updatedSteps = {
                     ...getTodaySteps(),
                     count: stepCount,
-                    calories: Math.round(stepCount * 0.04),
-                    distance: +(stepCount * 0.0008).toFixed(2),
+                    calories: calculateCaloriesFromSteps(stepCount, userWeight),
+                    distance: calculateDistance(stepCount, userHeight),
                 };
 
                 saveTodaySteps(updatedSteps);
@@ -66,14 +75,50 @@ export function startTracking(onStep) {
         }
 
         lastAccelerationMagnitude = magnitude;
-    });
+    };
+
+    window.addEventListener('devicemotion', motionHandler);
+
+    // Cache step data periodically to localStorage for persistence
+    setInterval(() => {
+        if (isTracking && stepCount > 0) {
+            const settings = getSettings();
+            const updatedSteps = {
+                ...getTodaySteps(),
+                count: stepCount,
+                calories: calculateCaloriesFromSteps(stepCount, settings.weight || 70),
+                distance: calculateDistance(stepCount, settings.height || 170),
+            };
+            saveTodaySteps(updatedSteps);
+        }
+    }, 30000); // Save every 30 seconds
 }
 
 export function stopTracking() {
     isTracking = false;
-    window.removeEventListener('devicemotion', null); // Simplified for this demo
+    if (motionHandler) {
+        window.removeEventListener('devicemotion', motionHandler);
+        motionHandler = null;
+    }
 }
 
 export function isSensorTracking() {
+    return isTracking;
+}
+
+// ===== Auto-initialize tracking (called on app start) =====
+
+export async function autoInitTracking(onStep) {
+    // Check if we have motion sensor support
+    if (typeof DeviceMotionEvent === 'undefined') return false;
+
+    // On Android/non-iOS, we can start tracking without explicit permission
+    if (typeof DeviceMotionEvent.requestPermission !== 'function') {
+        if (!isTracking) {
+            startTracking(onStep);
+            return true;
+        }
+    }
+
     return isTracking;
 }

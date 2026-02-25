@@ -6,7 +6,7 @@ import {
     Mail, Copy, ExternalLink, Check, Camera, ChevronDown
 } from 'lucide-react';
 import ProgressRing from './ProgressRing.jsx';
-import { getUser, clearUser, getSettings, saveSettings, calculateGrowthIndex, saveUser } from '../utils/storage.js';
+import { getUser, clearUser, getSettings, saveSettings, calculateGrowthIndex, saveUser, getWeeklyGrowth } from '../utils/storage.js';
 import { getScoreColor, getScoreLabel } from '../utils/algorithms.js';
 import { useTheme, THEMES } from '../utils/theme.jsx';
 import { downloadDailyReport, downloadWeeklyReport, shareReport, shareViaWhatsApp, shareViaEmail } from '../utils/export.js';
@@ -15,6 +15,7 @@ import { getConnectionStatus } from '../utils/sync.js';
 export default function Profile({ user, onLogout, onNavigate, onUserUpdate }) {
     const [settings, setSettings] = useState(getSettings());
     const [growth, setGrowth] = useState(null);
+    const [weeklyGrowth, setWeeklyGrowth] = useState([]);
     const [showSettingsModal, setShowSettingsModal] = useState(false);
     const [showExportModal, setShowExportModal] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
@@ -26,6 +27,7 @@ export default function Profile({ user, onLogout, onNavigate, onUserUpdate }) {
 
     useEffect(() => {
         setGrowth(calculateGrowthIndex());
+        setWeeklyGrowth(getWeeklyGrowth());
     }, []);
 
     const handleSaveSettings = () => {
@@ -100,7 +102,15 @@ export default function Profile({ user, onLogout, onNavigate, onUserUpdate }) {
             {/* Profile Header */}
             <div className="profile-header">
                 {/* Profile Image with upload */}
-                <div style={{ position: 'relative', display: 'inline-block' }}>
+                <div style={{
+                    position: 'relative',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    width: 80,
+                    minHeight: 80,
+                    margin: '0 auto',
+                }}>
                     {user.profileImage ? (
                         <img
                             src={user.profileImage}
@@ -109,13 +119,22 @@ export default function Profile({ user, onLogout, onNavigate, onUserUpdate }) {
                             style={{
                                 objectFit: 'cover',
                                 cursor: 'pointer',
+                                width: 80,
+                                height: 80,
                             }}
                             onClick={() => fileInputRef.current?.click()}
                         />
                     ) : (
                         <div
                             className="profile-avatar"
-                            style={{ cursor: 'pointer' }}
+                            style={{
+                                cursor: 'pointer',
+                                width: 80,
+                                height: 80,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
                             onClick={() => fileInputRef.current?.click()}
                         >
                             {user.avatar || user.name[0]}
@@ -150,10 +169,12 @@ export default function Profile({ user, onLogout, onNavigate, onUserUpdate }) {
                         onClick={handleRemoveProfileImage}
                         style={{
                             background: 'none', border: 'none', cursor: 'pointer',
-                            color: 'var(--accent-red)', fontSize: 12, marginTop: 6,
+                            color: 'var(--accent-red)', fontSize: 12, marginTop: 8,
+                            fontWeight: 500, letterSpacing: '0.2px',
                         }}
+                        id="btn-remove-profile-image"
                     >
-                        Remove Photo
+                        Remove Profile Image
                     </button>
                 )}
 
@@ -187,7 +208,7 @@ export default function Profile({ user, onLogout, onNavigate, onUserUpdate }) {
                     </div>
                     <div className="profile-stat">
                         <div className="profile-stat-value">7</div>
-                        <div className="profile-stat-label">Streak 🔥</div>
+                        <div className="profile-stat-label">Streak</div>
                     </div>
                 </div>
             </div>
@@ -206,6 +227,64 @@ export default function Profile({ user, onLogout, onNavigate, onUserUpdate }) {
                     <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 12 }}>
                         {getScoreLabel(growth.growthIndex)} — Keep pushing! 🚀
                     </p>
+                </div>
+            )}
+
+            {/* Weekly Growth Overview */}
+            {weeklyGrowth.length > 0 && (
+                <div className="card" id="card-weekly-growth" style={{ marginTop: 12 }}>
+                    <div className="card-header">
+                        <span className="card-title">📈 Weekly Growth</span>
+                        <span className="stat-badge" style={{
+                            background: 'rgba(0, 230, 118, 0.12)',
+                            color: '#00e676',
+                            fontSize: 11,
+                        }}>
+                            AVG: {Math.round(weeklyGrowth.reduce((s, d) => s + d.growthIndex, 0) / weeklyGrowth.length)}
+                        </span>
+                    </div>
+                    <div className="weekly-bars" style={{ height: 90 }}>
+                        {weeklyGrowth.map((day, i) => {
+                            const color = getScoreColor(day.growthIndex);
+                            return (
+                                <div className="weekly-bar-col" key={i}>
+                                    <span className="weekly-step-label" style={{
+                                        color: day.isToday ? color : 'var(--text-muted)',
+                                        fontWeight: day.isToday ? 700 : 500,
+                                        fontSize: 11,
+                                    }}>
+                                        {day.growthIndex > 0 ? day.growthIndex : '—'}
+                                    </span>
+                                    <div
+                                        className="weekly-bar"
+                                        style={{
+                                            height: `${Math.max(8, day.growthIndex)}%`,
+                                            background: day.isToday
+                                                ? `linear-gradient(180deg, ${color}, ${color}88)`
+                                                : day.growthIndex > 0 ? `${color}50` : 'var(--bg-elevated)',
+                                            marginTop: 'auto',
+                                            transition: `height 1s ease ${i * 0.1}s`,
+                                            boxShadow: day.isToday ? `0 0 10px ${color}40` : 'none',
+                                        }}
+                                    />
+                                    <span className="weekly-label" style={{
+                                        fontWeight: day.isToday ? 700 : 400,
+                                        color: day.isToday ? color : 'var(--text-muted)',
+                                    }}>{day.day}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div style={{
+                        marginTop: 12, padding: '10px 12px', borderRadius: 10,
+                        background: 'var(--bg-elevated)', fontSize: 12, color: 'var(--text-secondary)',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    }}>
+                        <span>📐 Formula</span>
+                        <span style={{ fontSize: 10, fontFamily: 'var(--font-mono, monospace)', opacity: 0.8 }}>
+                            Activity×30% + Sleep×30% + Nutrition×20% + Hydration×20%
+                        </span>
+                    </div>
                 </div>
             )}
 
@@ -298,9 +377,9 @@ export default function Profile({ user, onLogout, onNavigate, onUserUpdate }) {
                                 backgroundPosition: 'right 8px center',
                             }}
                         >
-                            <option value="dark">🌙 Dark</option>
-                            <option value="light">☀️ Light</option>
-                            <option value="system">🖥️ System Default</option>
+                            <option value="dark">Dark</option>
+                            <option value="light">Light</option>
+                            <option value="system">System Default</option>
                         </select>
                     </div>
 
@@ -376,7 +455,7 @@ export default function Profile({ user, onLogout, onNavigate, onUserUpdate }) {
                         </div>
                         <div className="settings-info">
                             <div className="settings-name">About</div>
-                            <div className="settings-desc">Version 2.0.0 • Made with ❤️</div>
+                            <div className="settings-desc">Version 2.0.0</div>
                         </div>
                         <div className="settings-arrow"><ChevronRight size={16} /></div>
                     </div>

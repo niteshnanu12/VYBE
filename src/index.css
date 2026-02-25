@@ -2097,3 +2097,282 @@ body[data-theme="light"] #card-growth-detail div[style*="background"] {
     opacity: 1;
   }
 }
+
+/* ===== Date Navigator ===== */
+.date-navigator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(20, 20, 30, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-subtle);
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.date-nav-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.date-nav-btn:active:not(:disabled) {
+  transform: scale(0.9);
+  background: var(--bg-card-hover);
+}
+
+.date-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.date-nav-label {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.date-nav-day {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.date-nav-date {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+/* ===== Live Tracking Indicator ===== */
+.live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #00e676;
+  background: rgba(0, 230, 118, 0.1);
+  border: 1px solid rgba(0, 230, 118, 0.25);
+  text-transform: uppercase;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #00e676;
+  box-shadow: 0 0 8px rgba(0, 230, 118, 0.6);
+  animation: livePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+}
+
+/* ===== Weekly Step Labels ===== */
+.weekly-step-label {
+  font-size: 10px;
+  font-weight: 500;
+  font-family: var(--font-display);
+  color: var(--text-muted);
+  text-align: center;
+  display: block;
+  margin-bottom: 4px;
+  min-height: 14px;
+  white-space: nowrap;
+}
+
+/* Weekly bar today highlight */
+.weekly-bar.today {
+  position: relative;
+}
+
+.weekly-bar.today::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background: var(--accent-blue);
+  border-radius: 50%;
+}
+
+/* ===== Greeting ===== */
+.greeting-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.greeting-name {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-top: 2px;
+}
+
+/* ===== Step Ring Card ===== */
+.step-ring-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-md);
+  box-shadow: var(--shadow-glow-blue);
+  position: relative;
+  overflow: hidden;
+}
+
+.step-ring-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(79, 140, 255, 0.3), transparent);
+}
+
+/* ===== Score Number ===== */
+.score-number {
+  font-family: var(--font-display);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+
+/* ===== Swipe Feedback ===== */
+.page-content {
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.page-content.swiping-left {
+  transform: translateX(-10px);
+  opacity: 0.95;
+  transition: none;
+}
+
+.page-content.swiping-right {
+  transform: translateX(10px);
+  opacity: 0.95;
+  transition: none;
+}
+
+/* ===== Water Glass Enhancement ===== */
+.water-glass {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ===== Toast Animations ===== */
+@keyframes toastSlideIn {
+  from {
+    transform: translateY(-100%) scale(0.95);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes toastSlideOut {
+  from {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+
+  to {
+    transform: translateY(-100%) scale(0.95);
+    opacity: 0;
+  }
+}
+
+/* ===== Tabs ===== */
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  border: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-md);
+}
+
+.tab {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.tab.active {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.tab:active {
+  transform: scale(0.97);
+}
+
+/* ===== Toggle Buttons ===== */
+.toggle-btn {
+  padding: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.toggle-btn:active {
+  transform: scale(0.9);
+}

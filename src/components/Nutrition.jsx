@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UtensilsCrossed, Droplets, Plus, Coffee, Sun, Sunset, Moon as MoonIcon, Apple, Beef, Wheat, Droplet, ChevronRight } from 'lucide-react';
+import { UtensilsCrossed, Droplets, Plus, Coffee, Sun, Sunset, Moon as MoonIcon, Apple, Beef, Wheat, Droplet, ChevronRight, Settings, ChevronDown } from 'lucide-react';
 import ProgressRing from './ProgressRing.jsx';
-import { getTodayNutrition, saveNutrition, addMeal, getTodayHydration, saveHydration } from '../utils/storage.js';
+import { getNutritionForDate, saveNutrition, addMeal, getHydrationForDate, saveHydration, getSettings, saveSettings } from '../utils/storage.js';
+import { checkHydrationMilestone, checkCalorieAlert } from '../utils/notifications.js';
 import { Chart, ArcElement, Tooltip, Legend, DoughnutController } from 'chart.js';
 
 Chart.register(ArcElement, Tooltip, Legend, DoughnutController);
@@ -24,14 +25,41 @@ const quickFoods = [
     { name: 'Greek Yogurt', calories: 150, protein: 15, carbs: 12, fats: 4, emoji: '🥛' },
 ];
 
-export default function Nutrition() {
-    const [nutrition, setNutrition] = useState(getTodayNutrition());
-    const [hydration, setHydration] = useState(getTodayHydration());
+const glassSizePresets = [
+    { label: 'Small', ml: 150, emoji: '🥤' },
+    { label: 'Medium', ml: 250, emoji: '🥛' },
+    { label: 'Large', ml: 350, emoji: '🍶' },
+    { label: 'Bottle', ml: 500, emoji: '🫗' },
+];
+
+export default function Nutrition({ selectedDate }) {
+    const today = new Date().toISOString().split('T')[0];
+    const isToday = selectedDate === today;
+
+    const [nutrition, setNutrition] = useState(getNutritionForDate(selectedDate));
+    const [hydration, setHydration] = useState(getHydrationForDate(selectedDate));
     const [tab, setTab] = useState('food');
     const [showAddMealModal, setShowAddMealModal] = useState(false);
+    const [showHydrationSettings, setShowHydrationSettings] = useState(false);
     const [mealForm, setMealForm] = useState({ name: '', type: 'lunch', calories: '', protein: '', carbs: '', fats: '' });
     const chartRef = useRef(null);
     const chartInstance = useRef(null);
+
+    // Settings for hydration customization
+    const [hydrationSettings, setHydrationSettings] = useState(() => {
+        const s = getSettings();
+        return {
+            glassSize: s.glassSize || 250,
+            waterGoal: s.waterGoal || 8,
+            waterGoalMl: s.waterGoalMl || 2000,
+        };
+    });
+
+    // Update data when date changes
+    useEffect(() => {
+        setNutrition(getNutritionForDate(selectedDate));
+        setHydration(getHydrationForDate(selectedDate));
+    }, [selectedDate]);
 
     useEffect(() => {
         if (tab === 'food' && chartRef.current && nutrition.calories > 0) {
@@ -90,6 +118,9 @@ export default function Nutrition() {
         setNutrition(updated);
         setShowAddMealModal(false);
         setMealForm({ name: '', type: 'lunch', calories: '', protein: '', carbs: '', fats: '' });
+
+        // Check calorie alerts
+        checkCalorieAlert();
     };
 
     const handleQuickAdd = (food) => {
@@ -98,10 +129,43 @@ export default function Nutrition() {
     };
 
     const handleWaterToggle = (index) => {
+        if (!isToday) return; // Don't allow editing historical data
         const newGlasses = index + 1 <= hydration.glasses ? index : index + 1;
-        const updated = { ...hydration, glasses: newGlasses, ml: newGlasses * 250 };
+        const currentGlassSize = hydrationSettings.glassSize;
+        const updated = {
+            ...hydration,
+            glasses: newGlasses,
+            ml: newGlasses * currentGlassSize,
+            glassSize: currentGlassSize,
+        };
         saveHydration(updated);
         setHydration(updated);
+
+        // Check hydration milestones and trigger alerts
+        checkHydrationMilestone(newGlasses);
+    };
+
+    const handleSaveHydrationSettings = () => {
+        const newGoalMl = hydrationSettings.waterGoal * hydrationSettings.glassSize;
+        const updatedSettings = {
+            ...getSettings(),
+            glassSize: hydrationSettings.glassSize,
+            waterGoal: hydrationSettings.waterGoal,
+            waterGoalMl: newGoalMl,
+        };
+        saveSettings(updatedSettings);
+
+        // Update current hydration with new settings
+        const updatedHydration = {
+            ...hydration,
+            goal: hydrationSettings.waterGoal,
+            goalMl: newGoalMl,
+            glassSize: hydrationSettings.glassSize,
+            ml: hydration.glasses * hydrationSettings.glassSize,
+        };
+        saveHydration(updatedHydration);
+        setHydration(updatedHydration);
+        setShowHydrationSettings(false);
     };
 
     const macros = [
@@ -167,51 +231,55 @@ export default function Nutrition() {
                     </div>
 
                     {/* Quick Add */}
-                    <div className="section">
-                        <div className="section-header">
-                            <h3 className="section-title">Quick Add</h3>
-                            <button className="section-link" onClick={() => setShowAddMealModal(true)} id="btn-custom-meal">
-                                Custom <ChevronRight size={14} style={{ display: 'inline' }} />
-                            </button>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-                            {quickFoods.map((food, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => handleQuickAdd(food)}
-                                    style={{
-                                        background: 'var(--bg-card)',
-                                        border: '1px solid var(--border-subtle)',
-                                        borderRadius: 12,
-                                        padding: '12px 4px',
-                                        textAlign: 'center',
-                                        transition: 'all 0.2s ease',
-                                        cursor: 'pointer',
-                                    }}
-                                    className="quick-food-btn"
-                                >
-                                    <div style={{ fontSize: 24, marginBottom: 4 }}>{food.emoji}</div>
-                                    <div style={{ fontSize: 10, fontWeight: 500, color: 'var(--text-secondary)', lineHeight: 1.2 }}>{food.name}</div>
-                                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{food.calories} cal</div>
+                    {isToday && (
+                        <div className="section">
+                            <div className="section-header">
+                                <h3 className="section-title">Quick Add</h3>
+                                <button className="section-link" onClick={() => setShowAddMealModal(true)} id="btn-custom-meal">
+                                    Custom <ChevronRight size={14} style={{ display: 'inline' }} />
                                 </button>
-                            ))}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                                {quickFoods.map((food, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => handleQuickAdd(food)}
+                                        style={{
+                                            background: 'var(--bg-card)',
+                                            border: '1px solid var(--border-subtle)',
+                                            borderRadius: 12,
+                                            padding: '12px 4px',
+                                            textAlign: 'center',
+                                            transition: 'all 0.2s ease',
+                                            cursor: 'pointer',
+                                        }}
+                                        className="quick-food-btn"
+                                    >
+                                        <div style={{ fontSize: 24, marginBottom: 4 }}>{food.emoji}</div>
+                                        <div style={{ fontSize: 10, fontWeight: 500, color: 'var(--text-secondary)', lineHeight: 1.2 }}>{food.name}</div>
+                                        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{food.calories} cal</div>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Meal Log */}
                     <div className="section">
                         <div className="section-header">
-                            <h3 className="section-title">Today's Meals</h3>
-                            <button className="btn btn-sm btn-secondary" onClick={() => setShowAddMealModal(true)} style={{ width: 'auto' }} id="btn-add-meal">
-                                <Plus size={14} /> Add
-                            </button>
+                            <h3 className="section-title">{isToday ? "Today's" : "Day's"} Meals</h3>
+                            {isToday && (
+                                <button className="btn btn-sm btn-secondary" onClick={() => setShowAddMealModal(true)} style={{ width: 'auto' }} id="btn-add-meal">
+                                    <Plus size={14} /> Add
+                                </button>
+                            )}
                         </div>
 
                         {nutrition.meals.length === 0 ? (
                             <div className="empty-state">
                                 <UtensilsCrossed />
                                 <h3>No meals logged</h3>
-                                <p>Tap quick add or log a custom meal</p>
+                                <p>{isToday ? 'Tap quick add or log a custom meal' : 'No meals were logged on this day'}</p>
                             </div>
                         ) : (
                             nutrition.meals.map((meal, i) => (
@@ -243,15 +311,22 @@ export default function Nutrition() {
                         </div>
 
                         <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-                            {hydration.ml} ml / {hydration.goalMl} ml
+                            {hydration.ml || 0} ml / {hydration.goalMl || (hydration.goal * (hydrationSettings.glassSize || 250))} ml
                         </div>
 
-                        <div style={{ marginTop: 8 }}>
+                        <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                             <span className="stat-badge" style={{
                                 background: hydrationProgress >= 100 ? 'rgba(0,230,118,0.12)' : 'rgba(0,212,255,0.12)',
                                 color: hydrationProgress >= 100 ? '#00e676' : '#00d4ff'
                             }}>
                                 {hydrationProgress >= 100 ? '✅ Goal completed!' : `${Math.round(hydrationProgress)}% of daily goal`}
+                            </span>
+                            <span className="stat-badge" style={{
+                                background: 'rgba(179, 136, 255, 0.12)',
+                                color: '#b388ff',
+                                fontSize: 11,
+                            }}>
+                                🥛 {hydrationSettings.glassSize}ml / glass
                             </span>
                         </div>
                     </div>
@@ -260,7 +335,14 @@ export default function Nutrition() {
                     <div className="card" id="card-water-glasses">
                         <div className="card-header">
                             <span className="card-title">Tap to log water</span>
-                            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>250ml per glass</span>
+                            <button
+                                className="section-link"
+                                onClick={() => setShowHydrationSettings(true)}
+                                id="btn-hydration-settings"
+                                style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', background: 'none', border: 'none' }}
+                            >
+                                <Settings size={14} /> Customize
+                            </button>
                         </div>
                         <div className="water-glasses">
                             {[...Array(hydration.goal)].map((_, i) => (
@@ -268,9 +350,13 @@ export default function Nutrition() {
                                     key={i}
                                     className={`water-glass ${i < hydration.glasses ? 'filled' : ''}`}
                                     onClick={() => handleWaterToggle(i)}
+                                    disabled={!isToday}
                                     id={`water-glass-${i}`}
                                 >
                                     <Droplets size={20} />
+                                    <span style={{ fontSize: 9, color: i < hydration.glasses ? '#fff' : 'var(--text-muted)' }}>
+                                        {hydrationSettings.glassSize}ml
+                                    </span>
                                 </button>
                             ))}
                         </div>
@@ -345,6 +431,107 @@ export default function Nutrition() {
                         <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
                             <button className="btn btn-secondary" onClick={() => setShowAddMealModal(false)}>Cancel</button>
                             <button className="btn btn-primary" onClick={handleAddMeal} id="btn-save-meal">Add Meal</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Hydration Settings Modal */}
+            {showHydrationSettings && (
+                <div className="modal-overlay" onClick={() => setShowHydrationSettings(false)}>
+                    <div className="modal-sheet" onClick={e => e.stopPropagation()}>
+                        <div className="modal-handle" />
+                        <h3 className="modal-title">🥛 Hydration Preferences</h3>
+                        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>
+                            Customize your daily water intake goal and glass size.
+                        </p>
+
+                        {/* Glass Size Presets */}
+                        <div className="input-group">
+                            <label className="input-label">Glass Size</label>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginTop: 6 }}>
+                                {glassSizePresets.map(preset => (
+                                    <button
+                                        key={preset.ml}
+                                        className={`pill ${hydrationSettings.glassSize === preset.ml ? 'active' : ''}`}
+                                        onClick={() => setHydrationSettings({ ...hydrationSettings, glassSize: preset.ml })}
+                                        style={{
+                                            flexDirection: 'column',
+                                            padding: '12px 6px',
+                                            height: 'auto',
+                                            textAlign: 'center',
+                                            justifyContent: 'center',
+                                        }}
+                                    >
+                                        <span style={{ fontSize: 20 }}>{preset.emoji}</span>
+                                        <span style={{ fontSize: 11, fontWeight: 600 }}>{preset.label}</span>
+                                        <span style={{ fontSize: 10, opacity: 0.7 }}>{preset.ml}ml</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Custom Glass Size */}
+                        <div className="input-group">
+                            <label className="input-label">Custom Glass Size (ml)</label>
+                            <input
+                                className="input-field"
+                                type="number"
+                                value={hydrationSettings.glassSize}
+                                onChange={e => setHydrationSettings({ ...hydrationSettings, glassSize: Math.max(50, parseInt(e.target.value) || 250) })}
+                                min="50"
+                                max="1000"
+                                id="input-glass-size"
+                            />
+                        </div>
+
+                        {/* Number of Glasses */}
+                        <div className="input-group">
+                            <label className="input-label">Glasses Per Day</label>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <button
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={() => setHydrationSettings({ ...hydrationSettings, waterGoal: Math.max(1, hydrationSettings.waterGoal - 1) })}
+                                    style={{ width: 48, padding: 8, justifyContent: 'center' }}
+                                >-</button>
+                                <input
+                                    className="input-field"
+                                    type="number"
+                                    value={hydrationSettings.waterGoal}
+                                    onChange={e => setHydrationSettings({ ...hydrationSettings, waterGoal: Math.max(1, parseInt(e.target.value) || 8) })}
+                                    style={{ textAlign: 'center', flex: 1 }}
+                                    id="input-water-goal"
+                                />
+                                <button
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={() => setHydrationSettings({ ...hydrationSettings, waterGoal: Math.min(20, hydrationSettings.waterGoal + 1) })}
+                                    style={{ width: 48, padding: 8, justifyContent: 'center' }}
+                                >+</button>
+                            </div>
+                        </div>
+
+                        {/* Total ml Preview */}
+                        <div className="card" style={{
+                            background: 'rgba(0, 212, 255, 0.06)',
+                            border: '1px solid rgba(0, 212, 255, 0.2)',
+                            textAlign: 'center',
+                            padding: 16,
+                            marginBottom: 20,
+                        }}>
+                            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Daily Goal</div>
+                            <div style={{ fontSize: 28, fontWeight: 800, color: '#00d4ff', fontFamily: 'var(--font-display)' }}>
+                                {hydrationSettings.waterGoal * hydrationSettings.glassSize} ml
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                {hydrationSettings.waterGoal} × {hydrationSettings.glassSize}ml glasses
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 12 }}>
+                            <button className="btn btn-secondary" onClick={() => setShowHydrationSettings(false)}>Cancel</button>
+                            <button className="btn btn-primary" onClick={handleSaveHydrationSettings} id="btn-save-hydration-settings">
+                                Save Settings
+                            </button>
                         </div>
                     </div>
                 </div>

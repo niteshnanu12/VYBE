@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Moon, Heart, Brain, Zap, Clock, TrendingUp, ChevronRight, Sun, CloudMoon } from 'lucide-react';
 import ProgressRing from './ProgressRing.jsx';
-import { getTodaySleep, getWeeklySleep, saveSleep } from '../utils/storage.js';
+import { getSleepForDate, getWeeklySleep, saveSleep } from '../utils/storage.js';
 import { calculateRecoveryScore, getScoreColor, getScoreLabel } from '../utils/algorithms.js';
 
-export default function Recovery() {
-    const [sleep, setSleep] = useState(getTodaySleep());
+export default function Recovery({ selectedDate }) {
+    const today = new Date().toISOString().split('T')[0];
+    const isToday = selectedDate === today;
+
+    const [sleep, setSleep] = useState(getSleepForDate(selectedDate));
     const [weeklySleep, setWeeklySleep] = useState([]);
     const [showLogModal, setShowLogModal] = useState(false);
     const [sleepForm, setSleepForm] = useState({
@@ -15,8 +18,9 @@ export default function Recovery() {
     });
 
     useEffect(() => {
+        setSleep(getSleepForDate(selectedDate));
         setWeeklySleep(getWeeklySleep());
-    }, []);
+    }, [selectedDate]);
 
     const recoveryScore = sleep.recoveryScore || calculateRecoveryScore(sleep.quality || 70);
     const recoveryColor = getScoreColor(recoveryScore);
