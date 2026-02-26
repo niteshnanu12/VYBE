@@ -179,15 +179,23 @@ function DateNavigator({ selectedDate, onDateChange, availableDates }) {
 function AppContent() {
     const [user, setUser] = useState(null);
     const [onboarded, setOnboardedState] = useState(false);
-    const [activeTab, setActiveTab] = useState('home');
+    const [activeTab, setActiveTab] = useState(() => sessionStorage.getItem('vybe_route_state') || 'home');
     const [loading, setLoading] = useState(true);
     const [showSplash, setShowSplash] = useState(() => {
         return !sessionStorage.getItem('vybe_splash_shown');
     });
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [showInstallBanner, setShowInstallBanner] = useState(false);
-    const [selectedDate, setSelectedDate] = useState(getToday());
+    const [selectedDate, setSelectedDate] = useState(() => sessionStorage.getItem('vybe_date_state') || getToday());
     const [availableDates, setAvailableDates] = useState(() => getAvailableDates());
+
+    useEffect(() => {
+        sessionStorage.setItem('vybe_route_state', activeTab);
+    }, [activeTab]);
+
+    useEffect(() => {
+        sessionStorage.setItem('vybe_date_state', selectedDate);
+    }, [selectedDate]);
     const [permissionIssues, setPermissionIssues] = useState([]);
     const [showPermissionModal, setShowPermissionModal] = useState(false);
     const [liveSteps, setLiveSteps] = useState(null);
@@ -250,33 +258,31 @@ function AppContent() {
         sessionStorage.setItem('vybe_splash_shown', 'true');
     }, []);
 
-    const handleLogin = useCallback((userData) => {
+    const handleOnboardingComplete = useCallback((userData) => {
+        saveUser(userData);
         setUser(userData);
+        setOnboardedState(true);
+        setOnboarded(); // set in local storage
         generateDemoData();
         initSync(userData.id);
-        setTimeout(() => {
-            requestNotificationPermission();
-        }, 2000);
 
-        // Auto-start tracking after login
-        setTimeout(() => {
-            autoInitTracking(handleStepUpdate);
-        }, 3000);
-    }, [handleStepUpdate]);
-
-    const handleOnboardingComplete = useCallback(() => {
-        setOnboardedState(true);
         confetti({
             particleCount: 100,
             spread: 70,
             origin: { y: 0.6 },
             colors: ['#4f8cff', '#00e676', '#ff9100', '#b388ff', '#00d4ff'],
         });
+
         const settings = getSettings();
         initializeNotifications(settings);
 
-        // Auto-start tracking after onboarding
-        autoInitTracking(handleStepUpdate);
+        setTimeout(() => {
+            requestNotificationPermission();
+        }, 2000);
+
+        setTimeout(() => {
+            autoInitTracking(handleStepUpdate);
+        }, 3000);
     }, [handleStepUpdate]);
 
     const handleLogout = useCallback(() => {
@@ -356,12 +362,8 @@ function AppContent() {
         );
     }
 
-    if (!user) {
-        return <Login onLogin={handleLogin} />;
-    }
-
-    if (!onboarded) {
-        return <Onboarding user={user} onComplete={handleOnboardingComplete} />;
+    if (!user || !onboarded) {
+        return <Onboarding user={user} onComplete={handleLogin} />;
     }
 
     const showDateNav = ['home', 'activity', 'recovery', 'nutrition'].includes(activeTab);

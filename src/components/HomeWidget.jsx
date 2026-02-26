@@ -68,8 +68,13 @@ export default function HomeWidget() {
         }
     ];
 
-    const nextSlide = () => setActiveSlide((activeSlide + 1) % slides.length);
-    const prevSlide = () => setActiveSlide((activeSlide - 1 + slides.length) % slides.length);
+    const nextSlide = () => {
+        if (activeSlide < slides.length - 1) setActiveSlide(activeSlide + 1);
+    };
+
+    const prevSlide = () => {
+        if (activeSlide > 0) setActiveSlide(activeSlide - 1);
+    };
 
     return (
         <div className="home-widget-container">
@@ -112,7 +117,14 @@ export default function HomeWidget() {
             </div>
 
             <div className="widget-controls">
-                <button onClick={prevSlide} className="widget-control-btn"><ChevronLeft size={16} /></button>
+                <button
+                    onClick={prevSlide}
+                    className="widget-control-btn"
+                    style={{ opacity: activeSlide === 0 ? 0.3 : 1, cursor: activeSlide === 0 ? 'default' : 'pointer' }}
+                    disabled={activeSlide === 0}
+                >
+                    <ChevronLeft size={16} />
+                </button>
                 <div className="widget-dots">
                     {slides.map((_, i) => (
                         <div
@@ -122,7 +134,14 @@ export default function HomeWidget() {
                         />
                     ))}
                 </div>
-                <button onClick={nextSlide} className="widget-control-btn"><ChevronRight size={16} /></button>
+                <button
+                    onClick={nextSlide}
+                    className="widget-control-btn"
+                    style={{ opacity: activeSlide === slides.length - 1 ? 0.3 : 1, cursor: activeSlide === slides.length - 1 ? 'default' : 'pointer' }}
+                    disabled={activeSlide === slides.length - 1}
+                >
+                    <ChevronRight size={16} />
+                </button>
             </div>
 
             <style>{`

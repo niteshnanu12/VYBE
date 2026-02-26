@@ -31,6 +31,10 @@ export function generateDailyReport() {
     doc.text('Daily Health Report', 15, 28);
     doc.text(today, 15, 35);
     doc.text(`${user?.name || 'User'}`, 195, 20, { align: 'right' });
+    doc.setFontSize(9);
+    doc.text(`DOB: ${user?.dob || 'N/A'} | Height: ${user?.height || 'N/A'}cm | Weight: ${user?.weight || 'N/A'}kg`, 195, 28, { align: 'right' });
+    const bmi = user?.weight && user?.height ? (user.weight / Math.pow(user.height / 100, 2)).toFixed(1) : 'N/A';
+    doc.text(`BMI: ${bmi}`, 195, 35, { align: 'right' });
 
     y = 52;
     doc.setTextColor(30, 30, 46);

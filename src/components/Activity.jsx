@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Footprints, Bike, Dumbbell, Timer, Flame, MapPin, Plus, ChevronDown, Play, Pause, RotateCcw } from 'lucide-react';
 import { getActivitiesForDate, addActivity, getStepsForDate, saveTodaySteps, getSettings } from '../utils/storage.js';
-import { formatDuration, calculateDistance, calculateCaloriesFromSteps } from '../utils/algorithms.js';
+import { formatDuration, calculateDistance } from '../utils/algorithms.js';
 import { isSensorTracking } from '../utils/sensors.js';
+import { WorkoutService } from '../utils/workoutService.js';
 
 const activityTypes = [
     { type: 'walking', icon: Footprints, label: 'Walking', color: '#4f8cff', met: 3.5 },
@@ -14,17 +15,21 @@ const activityTypes = [
 export default function Activity({ selectedDate, liveSteps }) {
     const today = new Date().toISOString().split('T')[0];
     const isToday = selectedDate === today;
-
     const [activities, setActivities] = useState([]);
     const [steps, setSteps] = useState(null);
     const [showAddModal, setShowAddModal] = useState(false);
     const [selectedType, setSelectedType] = useState('walking');
     const [duration, setDuration] = useState('30');
 
-    // Workout timer
-    const [isTimerRunning, setIsTimerRunning] = useState(false);
-    const [timerSeconds, setTimerSeconds] = useState(0);
-    const [timerType, setTimerType] = useState('walking');
+    // Workout timer state powered by WorkoutService
+    const [timerState, setTimerState] = useState({ isRunning: false, elapsedSeconds: 0, type: 'walking' });
+
+    useEffect(() => {
+        const unsubscribe = WorkoutService.subscribe(state => {
+            setTimerState(state);
+        });
+        return () => unsubscribe();
+    }, []);
 
     useEffect(() => {
         setActivities(getActivitiesForDate(selectedDate));
@@ -48,12 +53,10 @@ export default function Activity({ selectedDate, liveSteps }) {
     }, [liveSteps, isToday]);
 
     useEffect(() => {
-        let interval;
-        if (isTimerRunning) {
-            interval = setInterval(() => setTimerSeconds(s => s + 1), 1000);
+        if (liveSteps && isToday) {
+            setSteps(liveSteps);
         }
-        return () => clearInterval(interval);
-    }, [isTimerRunning]);
+    }, [liveSteps, isToday]);
 
     const totalCalories = activities.reduce((sum, a) => sum + (a.calories || 0), 0);
     const totalDuration = activities.reduce((sum, a) => sum + (a.duration || 0), 0);
@@ -85,23 +88,8 @@ export default function Activity({ selectedDate, liveSteps }) {
     };
 
     const finishTimerWorkout = () => {
-        setIsTimerRunning(false);
-        const typeInfo = activityTypes.find(t => t.type === timerType);
-        const dur = Math.round(timerSeconds / 60);
-        if (dur < 1) return;
-
-        const cal = Math.round(dur * typeInfo.met * 1.2);
-        const dist = timerType === 'cycling' ? +(dur * 0.4).toFixed(1) : +(dur * 0.08).toFixed(1);
-
-        addActivity({
-            type: timerType,
-            name: `${typeInfo.label} Session`,
-            duration: dur,
-            calories: cal,
-            distance: dist,
-        });
+        WorkoutService.stop(selectedDate);
         setActivities(getActivitiesForDate(selectedDate));
-        setTimerSeconds(0);
     };
 
     const formatTimer = (seconds) => {
@@ -193,16 +181,16 @@ export default function Activity({ selectedDate, liveSteps }) {
                 <div className="card" id="card-workout-timer" style={{ textAlign: 'center' }}>
                     <div className="card-header">
                         <span className="card-title">Workout Timer</span>
-                        {isTimerRunning && <span className="live-indicator"><span className="live-dot" />ACTIVE</span>}
+                        {timerState.isRunning && <span className="live-indicator"><span className="live-dot" />ACTIVE</span>}
                     </div>
 
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
                         {activityTypes.map(at => (
                             <button
                                 key={at.type}
-                                className={`pill ${timerType === at.type ? 'active' : ''}`}
-                                onClick={() => !isTimerRunning && setTimerType(at.type)}
-                                style={timerType === at.type ? { background: `${at.color}18`, color: at.color, borderColor: `${at.color}40` } : {}}
+                                className={`pill ${timerState.type === at.type ? 'active' : ''}`}
+                                onClick={() => !timerState.isRunning && WorkoutService.start(at.type)} // Also changes type
+                                style={timerState.type === at.type ? { background: `${at.color}18`, color: at.color, borderColor: `${at.color}40` } : {}}
                             >
                                 <at.icon size={14} />
                                 {at.label}
@@ -210,26 +198,26 @@ export default function Activity({ selectedDate, liveSteps }) {
                         ))}
                     </div>
 
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 52, fontWeight: 800, letterSpacing: -2, margin: '16px 0', color: isTimerRunning ? 'var(--accent-green)' : 'var(--text-primary)' }}>
-                        {formatTimer(timerSeconds)}
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 52, fontWeight: 800, letterSpacing: -2, margin: '16px 0', color: timerState.isRunning ? 'var(--accent-green)' : 'var(--text-primary)' }}>
+                        {formatTimer(timerState.elapsedSeconds)}
                     </div>
 
                     <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
                         <button
                             className="btn btn-secondary btn-sm"
-                            onClick={() => { setTimerSeconds(0); setIsTimerRunning(false); }}
+                            onClick={() => WorkoutService.reset()}
                             style={{ width: 'auto', padding: '10px 20px' }}
                             id="btn-reset-timer"
                         >
                             <RotateCcw size={16} /> Reset
                         </button>
                         <button
-                            className={`btn ${isTimerRunning ? 'btn-danger' : 'btn-primary'} btn-sm`}
-                            onClick={() => isTimerRunning ? finishTimerWorkout() : setIsTimerRunning(true)}
+                            className={`btn ${timerState.isRunning ? 'btn-danger' : 'btn-primary'} btn-sm`}
+                            onClick={() => timerState.isRunning ? finishTimerWorkout() : WorkoutService.start(timerState.type)}
                             style={{ width: 'auto', padding: '10px 24px' }}
                             id="btn-toggle-timer"
                         >
-                            {isTimerRunning ? <><Pause size={16} /> Finish</> : <><Play size={16} /> Start</>}
+                            {timerState.isRunning ? <><Pause size={16} /> Finish</> : <><Play size={16} /> Start</>}
                         </button>
                     </div>
                 </div>
