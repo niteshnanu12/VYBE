@@ -66,34 +66,29 @@ export default function Login({ onLogin }) {
             if (step === 'login') {
                 const user = await firebaseSignIn(form.email, form.password);
                 const userData = await getUserData(user.uid, 'profile');
-                if (userData?.activated) {
-                    onLogin({
-                        id: user.uid,
-                        name: user.displayName,
-                        email: user.email,
-                        ...userData
-                    });
-                } else {
-                    setTempUser(user);
-                    setStep('verify-email');
-                    await generateAndSendEmailOTP(user.email);
-                }
+                onLogin({
+                    id: user.uid,
+                    name: user.displayName,
+                    email: user.email,
+                    ...userData,
+                    activated: true
+                });
             } else if (step === 'register') {
                 if (!form.name || !form.email || !form.password) throw new Error('Fill all fields');
                 const user = await firebaseSignUp(form.email, form.password, form.name);
-                setTempUser(user);
-                await generateAndSendEmailOTP(form.email);
-                setStep('verify-email');
-            } else if (step === 'verify-email') {
-                await verifyEmailOTP(tempUser.email, form.emailOtp);
-                setStep('enter-phone');
-            } else if (step === 'enter-phone') {
-                if (!form.phone) throw new Error('Enter phone number');
-                await sendPhoneOTP(form.phone);
-                setStep('verify-phone');
-            } else if (step === 'verify-phone') {
-                const user = await verifyPhoneOTP(form.smsOtp);
-                await handlePhoneVerified(user, form.phone);
+                await activateAccount(user.uid, 'No Phone');
+                setStep('success');
+                sendWelcomeNotification();
+                setTimeout(() => {
+                    onLogin({
+                        id: user.uid,
+                        name: user.displayName || form.name,
+                        email: user.email,
+                        phone: '',
+                        activated: true,
+                        avatar: (user.displayName || form.name || 'U')[0].toUpperCase(),
+                    });
+                }, 2000);
             }
         } catch (err) {
             setError(err.message);
@@ -116,9 +111,19 @@ export default function Login({ onLogin }) {
             if (userData?.activated) {
                 onLogin({ id: user.uid, name: user.displayName, email: user.email, ...userData });
             } else {
-                setTempUser(user);
-                setStep('verify-email');
-                await generateAndSendEmailOTP(user.email);
+                await activateAccount(user.uid, 'No Phone');
+                setStep('success');
+                sendWelcomeNotification();
+                setTimeout(() => {
+                    onLogin({
+                        id: user.uid,
+                        name: user.displayName,
+                        email: user.email,
+                        ...userData,
+                        activated: true,
+                        avatar: (user.displayName || user.email || 'U')[0].toUpperCase()
+                    });
+                }, 2000);
             }
         } catch (err) {
             setError(err.message);
