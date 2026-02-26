@@ -363,7 +363,7 @@ function AppContent() {
     }
 
     if (!user || !onboarded) {
-        return <Onboarding user={user} onComplete={handleLogin} />;
+        return <Onboarding user={user} onComplete={handleOnboardingComplete} />;
     }
 
     const showDateNav = ['home', 'activity', 'recovery', 'nutrition'].includes(activeTab);

@@ -43,10 +43,14 @@ const steps = [
 export default function Onboarding({ user, onComplete }) {
     const [currentStep, setCurrentStep] = useState(0);
     const [profileForm, setProfileForm] = useState({
-        weight: '70',
+        name: user?.displayName || '',
+        email: user?.email || '',
+        dob: '',
+        mobile: '',
         height: '170',
-        age: '25',
+        weight: '70',
         gender: 'male',
+        fitnessGoal: 'Maintenance',
         stepGoal: '10000',
     });
 
@@ -55,17 +59,29 @@ export default function Onboarding({ user, onComplete }) {
 
     const handleNext = () => {
         if (isLast) {
+            if (!profileForm.name || !profileForm.email) {
+                alert('Please provide your name and email to continue.');
+                return;
+            }
+
             const settings = getSettings();
             saveSettings({
                 ...settings,
                 weight: parseInt(profileForm.weight) || 70,
                 height: parseInt(profileForm.height) || 170,
-                age: parseInt(profileForm.age) || 25,
                 gender: profileForm.gender,
+                fitnessGoal: profileForm.fitnessGoal,
                 stepGoal: parseInt(profileForm.stepGoal) || 10000,
             });
             setOnboarded();
-            onComplete();
+            onComplete({
+                id: user?.uid || 'local-user-' + Date.now().toString(),
+                name: profileForm.name,
+                email: profileForm.email,
+                dob: profileForm.dob,
+                mobile: profileForm.mobile,
+                activated: true
+            });
         } else {
             setCurrentStep(prev => prev + 1);
         }
@@ -96,32 +112,54 @@ export default function Onboarding({ user, onComplete }) {
                     <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, textAlign: 'center', marginBottom: 8 }}>Set Up Your Profile</h2>
                     <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14, marginBottom: 32 }}>Help us personalize your experience</p>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, marginBottom: 12 }}>
                         <div className="input-group">
-                            <label className="input-label">Weight (kg)</label>
-                            <input className="input-field" type="number" value={profileForm.weight} onChange={e => setProfileForm({ ...profileForm, weight: e.target.value })} id="input-weight" />
+                            <label className="input-label">Full Name *</label>
+                            <input className="input-field" type="text" value={profileForm.name} onChange={e => setProfileForm({ ...profileForm, name: e.target.value })} placeholder="John Doe" required />
                         </div>
+                        <div className="input-group">
+                            <label className="input-label">Email Address *</label>
+                            <input className="input-field" type="email" value={profileForm.email} onChange={e => setProfileForm({ ...profileForm, email: e.target.value })} placeholder="john@example.com" required />
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                        <div className="input-group">
+                            <label className="input-label">Date of Birth</label>
+                            <input className="input-field" type="date" value={profileForm.dob} onChange={e => setProfileForm({ ...profileForm, dob: e.target.value })} />
+                        </div>
+                        <div className="input-group">
+                            <label className="input-label">Mobile Number</label>
+                            <input className="input-field" type="tel" value={profileForm.mobile} onChange={e => setProfileForm({ ...profileForm, mobile: e.target.value })} />
+                        </div>
+
                         <div className="input-group">
                             <label className="input-label">Height (cm)</label>
-                            <input className="input-field" type="number" value={profileForm.height} onChange={e => setProfileForm({ ...profileForm, height: e.target.value })} id="input-height" />
+                            <input className="input-field" type="number" value={profileForm.height} onChange={e => setProfileForm({ ...profileForm, height: e.target.value })} />
                         </div>
                         <div className="input-group">
-                            <label className="input-label">Age</label>
-                            <input className="input-field" type="number" value={profileForm.age} onChange={e => setProfileForm({ ...profileForm, age: e.target.value })} id="input-age" />
+                            <label className="input-label">Weight (kg)</label>
+                            <input className="input-field" type="number" value={profileForm.weight} onChange={e => setProfileForm({ ...profileForm, weight: e.target.value })} />
                         </div>
+
                         <div className="input-group">
                             <label className="input-label">Gender</label>
-                            <select className="input-field" value={profileForm.gender} onChange={e => setProfileForm({ ...profileForm, gender: e.target.value })} id="select-gender">
+                            <select className="input-field" value={profileForm.gender} onChange={e => setProfileForm({ ...profileForm, gender: e.target.value })}>
                                 <option value="male">Male</option>
                                 <option value="female">Female</option>
                                 <option value="other">Other</option>
                             </select>
                         </div>
-                    </div>
 
-                    <div className="input-group">
-                        <label className="input-label">Daily Step Goal</label>
-                        <input className="input-field" type="number" value={profileForm.stepGoal} onChange={e => setProfileForm({ ...profileForm, stepGoal: e.target.value })} id="input-step-goal" />
+                        <div className="input-group">
+                            <label className="input-label">Fitness Goal</label>
+                            <select className="input-field" value={profileForm.fitnessGoal} onChange={e => setProfileForm({ ...profileForm, fitnessGoal: e.target.value })}>
+                                <option value="Weight Loss">Weight Loss</option>
+                                <option value="Muscle Gain">Muscle Gain</option>
+                                <option value="Maintenance">Maintenance</option>
+                                <option value="Endurance">Endurance</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             )}
@@ -147,16 +185,16 @@ export default function Onboarding({ user, onComplete }) {
                 <ChevronRight size={18} />
             </button>
 
-            {isFeatureStep && (
+            {isFeatureStep ? (
                 <button
                     className="btn btn-ghost"
-                    onClick={() => { setOnboarded(); onComplete(); }}
+                    onClick={() => setCurrentStep(steps.length)}
                     style={{ maxWidth: 360, marginTop: 8, fontSize: 13 }}
                     id="btn-skip"
                 >
-                    Skip Setup
+                    Skip Intro
                 </button>
-            )}
+            ) : null}
         </div>
     );
 }
