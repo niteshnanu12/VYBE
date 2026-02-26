@@ -5,6 +5,7 @@ import Activity from './components/Activity.jsx';
 import Recovery from './components/Recovery.jsx';
 import Nutrition from './components/Nutrition.jsx';
 import Profile from './components/Profile.jsx';
+import GrowthView from './components/GrowthView.jsx';
 import Community from './components/Community.jsx';
 import Support from './components/Support.jsx';
 import Notifications from './components/Notifications.jsx';
@@ -15,7 +16,7 @@ import { ThemeProvider } from './utils/theme.jsx';
 import { getUser, isOnboarded, generateDemoData, getSettings, saveUser, getToday, getDateLabel, getAvailableDates, getNextAvailableDate, getPrevAvailableDate } from './utils/storage.js';
 import { initSync, stopSync } from './utils/sync.js';
 import { requestNotificationPermission, initializeNotifications, stopAllReminders } from './utils/notifications.js';
-import { checkPermissionsOnLaunch, initializeBackgroundTracking, registerBackgroundServices, canShowTrackingMetrics } from './utils/permissions.js';
+import { checkPermissionsOnLaunch, initializeBackgroundTracking, registerBackgroundServices, canShowTrackingMetrics, requestAllPermissions } from './utils/permissions.js';
 import { autoInitTracking } from './utils/sensors.js';
 import confetti from 'canvas-confetti';
 import { ChevronLeft, ChevronRight, AlertTriangle, Shield } from 'lucide-react';
@@ -292,7 +293,6 @@ function AppContent() {
     }, []);
 
     const handleRequestPermissions = useCallback(async () => {
-        const { requestAllPermissions } = await import('./utils/permissions.js');
         await requestAllPermissions(handleStepUpdate);
         setShowPermissionModal(false);
         setPermissionIssues([]);
@@ -372,6 +372,7 @@ function AppContent() {
             case 'activity': return <Activity selectedDate={selectedDate} liveSteps={liveSteps} />;
             case 'recovery': return <Recovery selectedDate={selectedDate} />;
             case 'nutrition': return <Nutrition selectedDate={selectedDate} />;
+            case 'growth': return <GrowthView />;
             case 'community': return <Community />;
             case 'profile': return <Profile user={user} onLogout={handleLogout} onNavigate={setActiveTab} onUserUpdate={handleUserUpdate} />;
             case 'support': return <Support />;

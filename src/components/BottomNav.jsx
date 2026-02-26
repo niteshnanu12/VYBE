@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Home, Activity, Moon, UtensilsCrossed, User, Users, MoreHorizontal } from 'lucide-react';
+import { Home, Activity, Moon, UtensilsCrossed, User, Users, MoreHorizontal, TrendingUp } from 'lucide-react';
 
 const primaryTabs = [
     { id: 'home', label: 'Home', icon: Home },
     { id: 'activity', label: 'Activity', icon: Activity },
-    { id: 'community', label: 'Community', icon: Users },
     { id: 'nutrition', label: 'Nutrition', icon: UtensilsCrossed },
+    { id: 'growth', label: 'Growth', icon: TrendingUp },
     { id: 'profile', label: 'Profile', icon: User },
 ];
 

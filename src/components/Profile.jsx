@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import ProgressRing from './ProgressRing.jsx';
 import { getUser, clearUser, getSettings, saveSettings, calculateGrowthIndex, saveUser, getWeeklyGrowth } from '../utils/storage.js';
-import { getScoreColor, getScoreLabel } from '../utils/algorithms.js';
+import { getScoreColor, getScoreLabel, calculateBMI, getBMICategory, getBMIColor } from '../utils/algorithms.js';
 import { useTheme, THEMES } from '../utils/theme.jsx';
 import { downloadDailyReport, downloadWeeklyReport, shareReport, shareViaWhatsApp, shareViaEmail } from '../utils/export.js';
 import { getConnectionStatus } from '../utils/sync.js';
@@ -96,6 +96,10 @@ export default function Profile({ user, onLogout, onNavigate, onUserUpdate }) {
 
     const daysSinceJoin = Math.max(1, Math.floor((Date.now() - new Date(user.joinDate).getTime()) / 86400000));
     const themeLabel = theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'System Default';
+
+    const bmi = calculateBMI(settings.weight, settings.height);
+    const bmiCategory = getBMICategory(bmi);
+    const bmiColor = getBMIColor(bmiCategory);
 
     return (
         <div>
@@ -336,6 +340,36 @@ export default function Profile({ user, onLogout, onNavigate, onUserUpdate }) {
                         <Calendar size={18} style={{ color: 'var(--text-secondary)', marginBottom: 4 }} />
                         <div className="metric-value">{settings.age}</div>
                         <div className="metric-label">YEARS</div>
+                    </div>
+                </div>
+
+                <div className="card" style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{
+                            width: 44, height: 44, borderRadius: 12,
+                            background: `${bmiColor}15`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                            <TrendingUp size={22} style={{ color: bmiColor }} />
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>Body Mass Index (BMI)</div>
+                            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
+                                {bmi} <span style={{ fontSize: 13, fontWeight: 500, color: bmiColor }}>({bmiCategory})</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                        <div style={{
+                            height: 6, width: 80, background: 'var(--bg-elevated)', borderRadius: 3, overflow: 'hidden', marginBottom: 4
+                        }}>
+                            <div style={{
+                                height: '100%',
+                                width: `${Math.min(100, (bmi / 40) * 100)}%`,
+                                background: bmiColor
+                            }} />
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Healthy Range: 18.5 - 25</div>
                     </div>
                 </div>
             </div>

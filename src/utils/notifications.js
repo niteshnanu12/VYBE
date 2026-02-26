@@ -604,6 +604,89 @@ export function initializeNotifications(settings = {}) {
     if (workoutReminder) scheduleWorkoutReminder(workoutHour, workoutMin);
     if (inactivityAlert) startInactivityAlerts(inactivityThreshold);
     if (dailySummary) scheduleDailySummary(summaryHour, summaryMin);
+
+    // Phase 2: Meal Reminders & Wake-up
+    scheduleMealReminders();
+    scheduleWakeUpReminder(bedtimeHour, bedtimeMin);
+}
+
+// ===== Meal Reminders =====
+
+export function scheduleMealReminders() {
+    stopMealReminders();
+
+    // Typical meal times if not configured
+    const mealTimes = [
+        { name: 'Breakfast', hour: 8, min: 0, icon: '🍳' },
+        { name: 'Lunch', hour: 13, min: 0, icon: '🥗' },
+        { name: 'Dinner', hour: 19, min: 30, icon: '🍲' }
+    ];
+
+    reminderIntervals.meals = setInterval(() => {
+        const now = new Date();
+        const hour = now.getHours();
+        const min = now.getMinutes();
+
+        mealTimes.forEach(meal => {
+            if (hour === meal.hour && min === meal.min) {
+                sendNotification(`${meal.icon} ${meal.name} Time`, {
+                    body: `Time for your ${meal.name.toLowerCase()}. Log your meal in VYBE to stay on track!`,
+                    tag: `meal-${meal.name.toLowerCase()}`,
+                    type: 'info',
+                    icon: meal.icon,
+                    onClick: () => window.location.hash = '#nutrition'
+                });
+            }
+        });
+    }, 60 * 1000);
+}
+
+export function stopMealReminders() {
+    if (reminderIntervals.meals) {
+        clearInterval(reminderIntervals.meals);
+        delete reminderIntervals.meals;
+    }
+}
+
+// ===== Wake-up Reminder =====
+
+export function scheduleWakeUpReminder(bedtimeHour, bedtimeMin) {
+    stopWakeUpReminder();
+
+    // Assume 8 hours of sleep if not specified
+    const wakeHour = (bedtimeHour + 8) % 24;
+    const wakeMin = bedtimeMin;
+
+    reminderIntervals.wakeup = setInterval(() => {
+        const now = new Date();
+        if (now.getHours() === wakeHour && now.getMinutes() === wakeMin) {
+            sendNotification('☀️ Good Morning!', {
+                body: "Welcome to a new day. Own Your VYBE starting now!",
+                tag: 'wakeup-reminder',
+                type: 'success',
+                icon: '☀️'
+            });
+        }
+    }, 60 * 1000);
+}
+
+export function stopWakeUpReminder() {
+    if (reminderIntervals.wakeup) {
+        clearInterval(reminderIntervals.wakeup);
+        delete reminderIntervals.wakeup;
+    }
+}
+
+// ===== Welcome Notification =====
+
+export function sendWelcomeNotification() {
+    sendNotification('✨ Welcome to VYBE', {
+        body: "Own Your VYBE starting today. We're excited to have you on board!",
+        tag: 'welcome-notification',
+        type: 'milestone',
+        icon: '✨',
+        urgent: true
+    });
 }
 
 export function stopAllReminders() {

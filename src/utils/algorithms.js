@@ -9,12 +9,44 @@ export function calculateCaloriesFromSteps(steps, weightKg = 70, met = 3.5) {
     return Math.round(steps * stepLengthKm * weightKg * met / 10);
 }
 
-/**
- * Calculate distance from steps
- */
 export function calculateDistance(steps, heightCm = 170) {
     const strideLengthM = heightCm * 0.415 / 100; // stride length based on height
     return +((steps * strideLengthM) / 1000).toFixed(2); // km
+}
+
+/**
+ * Calculate BMI (Body Mass Index)
+ * Formula: weight (kg) / height (m)^2
+ */
+export function calculateBMI(weightKg, heightCm) {
+    if (!weightKg || !heightCm) return null;
+    const heightM = heightCm / 100;
+    const bmi = weightKg / (heightM * heightM);
+    return +bmi.toFixed(1);
+}
+
+/**
+ * Get BMI Category
+ */
+export function getBMICategory(bmi) {
+    if (!bmi) return 'Unknown';
+    if (bmi < 18.5) return 'Underweight';
+    if (bmi < 25) return 'Normal Weight';
+    if (bmi < 30) return 'Overweight';
+    return 'Obese';
+}
+
+/**
+ * Get BMI Category Color
+ */
+export function getBMIColor(category) {
+    switch (category) {
+        case 'Underweight': return '#3498db'; // Blue
+        case 'Normal Weight': return '#2ecc71'; // Green
+        case 'Overweight': return '#f1c40f'; // Yellow
+        case 'Obese': return '#e67e22'; // Orange
+        default: return '#95a5a6';
+    }
 }
 
 /**

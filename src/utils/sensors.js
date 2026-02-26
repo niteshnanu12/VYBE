@@ -1,7 +1,7 @@
 // ===== VYBE - Mobile Sensor Manager =====
 // Handles step tracking with proper distance calculation and background persistence
 
-import { getTodaySteps, saveTodaySteps, getSettings } from './storage.js';
+import { getTodaySteps, saveTodaySteps, getSettings, getTodaySleep, saveSleep as saveTodaySleep } from './storage.js';
 import { calculateDistance, calculateCaloriesFromSteps } from './algorithms.js';
 
 let isTracking = false;
@@ -11,6 +11,11 @@ let stepCount = 0;
 let lastStepTime = 0;
 let motionHandler = null;
 const MIN_STEP_INTERVAL = 300; // ms
+
+// Sleep Monitoring State
+let isSleepTracking = false;
+let sleepIntensityScores = [];
+let lastSleepCheckTime = 0;
 
 export async function requestSensorPermissions() {
     if (typeof DeviceMotionEvent === 'undefined') {
@@ -75,6 +80,11 @@ export function startTracking(onStep) {
         }
 
         lastAccelerationMagnitude = magnitude;
+
+        // Process for sleep if active
+        if (isSleepTracking) {
+            processMotionForSleep(magnitude);
+        }
     };
 
     window.addEventListener('devicemotion', motionHandler);
@@ -121,4 +131,60 @@ export async function autoInitTracking(onStep) {
     }
 
     return isTracking;
+}
+
+// ===== Sleep Monitoring Logic =====
+
+export function startSleepMonitoring() {
+    if (isSleepTracking) return;
+    isSleepTracking = true;
+    sleepIntensityScores = [];
+    lastSleepCheckTime = Date.now();
+    console.log('🛌 Sleep monitoring started');
+}
+
+export function stopSleepMonitoring() {
+    if (!isSleepTracking) return;
+    isSleepTracking = false;
+
+    // Finalize sleep data
+    const sleep = getTodaySleep();
+    // Aggregate intensity scores to determine stages (simplified)
+    const avgIntensity = sleepIntensityScores.length > 0
+        ? sleepIntensityScores.reduce((a, b) => a + b, 0) / sleepIntensityScores.length
+        : 0;
+
+    const finalSleep = {
+        ...sleep,
+        quality: Math.round(100 - (avgIntensity * 100)),
+        stages: {
+            deep: avgIntensity < 0.1 ? 40 : 20,
+            rem: avgIntensity < 0.3 ? 30 : 15,
+            light: avgIntensity < 0.6 ? 30 : 65
+        }
+    };
+
+    saveTodaySleep(finalSleep);
+    return finalSleep;
+}
+
+// Internal function to process motion for sleep
+function processMotionForSleep(magnitude) {
+    if (!isSleepTracking) return;
+
+    const now = Date.now();
+    // Record movement intensity (deviation from 1.0G)
+    const intensity = Math.abs(magnitude - 1.0);
+    sleepIntensityScores.push(intensity);
+
+    // Periodically save aggregates (every 5 mins)
+    if (now - lastSleepCheckTime > 5 * 60 * 1000) {
+        const sleep = getTodaySleep();
+        saveTodaySleep({
+            ...sleep,
+            lastUpdated: now,
+            intensityHistory: [...(sleep.intensityHistory || []), intensity]
+        });
+        lastSleepCheckTime = now;
+    }
 }

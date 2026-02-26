@@ -391,6 +391,23 @@ export function getWeeklyGrowth() {
     return result;
 }
 
+export function getGrowthTrend() {
+    const weekly = getWeeklyGrowth();
+    if (weekly.length < 2) return { value: 0, improved: true };
+
+    const today = weekly[weekly.length - 1].growthIndex;
+    const previousDays = weekly.slice(0, -1);
+    const avgPrev = previousDays.reduce((s, d) => s + d.growthIndex, 0) / previousDays.length;
+
+    if (avgPrev === 0) return { value: today > 0 ? 100 : 0, improved: true };
+
+    const trend = ((today - avgPrev) / avgPrev) * 100;
+    return {
+        value: Math.abs(Math.round(trend * 10) / 10),
+        improved: trend >= 0
+    };
+}
+
 // ===== Yesterday's Performance Data (for Radar Chart) =====
 
 export function getYesterdayPerformance() {

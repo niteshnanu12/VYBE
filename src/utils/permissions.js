@@ -12,6 +12,8 @@ export function getPermissionState() {
     const defaults = {
         motion: 'unknown',      // 'granted' | 'denied' | 'unknown'
         notification: 'unknown',
+        location: 'unknown',
+        audio: 'unknown',
         backgroundRefresh: 'unknown',
         lastChecked: null,
     };
@@ -53,7 +55,30 @@ export async function requestAllPermissions(onStepUpdate) {
         state.notification = 'denied';
     }
 
-    // 3. Background refresh (PWA/Service Worker)
+    // 3. Location Permission (GPS)
+    try {
+        const geoResult = await new Promise((resolve) => {
+            navigator.geolocation.getCurrentPosition(() => resolve('granted'), () => resolve('denied'));
+        });
+        state.location = geoResult;
+    } catch (err) {
+        state.location = 'denied';
+    }
+
+    // 4. Audio Permission (Microphone for Sleep Stage)
+    try {
+        const audioResult = await navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                stream.getTracks().forEach(track => track.stop());
+                return 'granted';
+            })
+            .catch(() => 'denied');
+        state.audio = audioResult;
+    } catch (err) {
+        state.audio = 'denied';
+    }
+
+    // 5. Background refresh (PWA/Service Worker)
     if ('serviceWorker' in navigator) {
         state.backgroundRefresh = 'granted';
     } else {
@@ -94,13 +119,23 @@ export function checkPermissionsOnLaunch() {
         });
     }
 
-    // Check if motion was denied
-    if (state.motion === 'denied') {
+    // Check for location
+    if (state.location === 'denied') {
         issues.push({
-            type: 'motion',
-            label: 'Motion Sensors',
-            description: 'Step tracking requires motion sensor access',
-            icon: '📱',
+            type: 'location',
+            label: 'Location (GPS)',
+            description: 'Required for outdoor distance and route tracking',
+            icon: '📍',
+        });
+    }
+
+    // Check for audio
+    if (state.audio === 'denied') {
+        issues.push({
+            type: 'audio',
+            label: 'Microphone',
+            description: 'Used for sleep stage detection via sound analysis',
+            icon: '🎙️',
         });
     }
 

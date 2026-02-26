@@ -6,6 +6,7 @@ import { formatNumber, getScoreColor, getScoreLabel } from '../utils/algorithms.
 import { Chart as ChartJS, RadialLinearScale, PointElement, LineElement, Filler } from 'chart.js';
 import { Radar } from 'react-chartjs-2';
 import { isSensorTracking } from '../utils/sensors.js';
+import HomeWidget from './HomeWidget.jsx';
 
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler);
 
@@ -145,6 +146,9 @@ export default function Dashboard({ user, selectedDate, liveSteps }) {
                     )}
                 </div>
             </div>
+
+            {/* Home Widget (Multi-Slide) */}
+            <HomeWidget />
 
             {/* Step Ring - Hero Card */}
             <div className="step-ring-card" id="card-steps">
